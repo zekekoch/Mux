@@ -8,8 +8,6 @@ class CMux
     const byte pinC = 19;
     const byte pinZ = 16; 
     
-    int muxState[8] = {0};
-
     byte dialState = 0;
     int cutOffState = 0;
   
@@ -101,7 +99,28 @@ class CMux
 
   bool isIntensifierOn()
   {    
-    if (getDynamicIntensifier());
+    static bool currentState = false;
+    static bool lastState = false;
+
+    static unsigned long lastTime = millis();
+    if (millis() < lastTime + 25)
+    {
+      //Serial.println("not long enough");
+      return lastState;
+    } 
+    else
+    {
+      lastTime = millis();      
+    }
+
+    currentState = getDynamicIntensifier();
+
+
+    if (currentState == true && lastState == false)
+    {
+      Serial.println("toggle");
+    }
+    lastState = currentState;
   }
 
   byte getCutOff()
@@ -131,10 +150,64 @@ class CMux
     return (read(pinLifeTest) > 0);
   }
 
+  bool isLifeTestOn()
+  {    
+    static bool currentState = false;
+    static bool lastState = false;
+
+    static unsigned long lastTime = millis();
+    if (millis() < lastTime + 25)
+    {
+      //Serial.println("not long enough");
+      return lastState;
+    } 
+    else
+    {
+      lastTime = millis();      
+    }
+
+    currentState = getLifeTest();
+
+
+    if (currentState == true && lastState == false)
+    {
+      Serial.println("toggle");
+    }
+    lastState = currentState;
+  }
+
+
   bool getEmission()
   {
     return (read(pinEmission) == 0);
   }
+
+  bool isEmissionOn()
+  {    
+    static bool currentState = false;
+    static bool lastState = false;
+
+    static unsigned long lastTime = millis();
+    if (millis() < lastTime + 25)
+    {
+      //Serial.println("not long enough");
+      return lastState;
+    } 
+    else
+    {
+      lastTime = millis();      
+    }
+
+    currentState = getEmission();
+
+
+    if (currentState == true && lastState == false)
+    {
+      Serial.println("toggle");
+    }
+    lastState = currentState;
+  }
+
   
   void printPad(int num)
   {

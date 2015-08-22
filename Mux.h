@@ -1,21 +1,47 @@
 class CMux 
 {
   private:
-  const byte pinA = 17;
-  const byte pinB = 18;
-  const byte pinC = 19;
-  const byte pinZ = 16; 
+
+    // this represents the pins on the mux going into the arduino
+    const byte pinA = 17;
+    const byte pinB = 18;
+    const byte pinC = 19;
+    const byte pinZ = 16; 
+    
+    int muxState[8] = {0};
+
+    byte dialState = 0;
+    int cutOffState = 0;
   
-  const byte dialCont = 0;
-  const byte dialEmission = 1;
-  const byte dialLow = 2;
-  const byte dialMedium = 3;
-  const byte dialHigh = 4;
-  
-  byte dialState = 0;
-  int cutOffState = 0;
-  
+  // this is the pins going to the buttons
+  enum pins
+  {
+    pinEmission = 0,
+    pinLifeTest = 2,
+    pinIntensifier = 4,
+    pinCutoff = 6,
+
+    pinDialA = 7,
+    pinDialB = 5,
+    pinDialC = 3,
+    pinDialD = 1
+  } pins;
+
+  boolean emissionOn = false;
+  boolean intensifierOn = false;
+  boolean lifeTestOn = false;
+
   public:
+
+  enum dialState
+  {
+    dialCont,
+    dialEmission,
+    dialLow,
+    dialMedium,
+    dialHigh
+  };
+
   CMux()
   {
     pinMode(pinZ, INPUT);
@@ -26,6 +52,13 @@ class CMux
   
   byte getDial()
   {
+    //            1  3  5  7
+    // cont-short 0  30 0  30
+    // emission   0  30 30 30
+    // dyn-lo     0  30 30 0
+    // dyn med    30 0  30 0 
+    // dyn-hi     30 30 30 30
+
     static unsigned long lastCheck = millis();
 
     if (millis() > lastCheck + 200)
@@ -33,84 +66,80 @@ class CMux
       lastCheck = millis();
       return dialState;
     }
-
-//            1  3  5  7
-// cont-short 0  30 0  30
-// emission   0  30 30 30
-// dyn-lo     0  30 30 0
-// dyn med    30 0  30 0 
-// dyn-hi     30 30 30 30
-
-    // cont 110
-    // emis 100
-    // dlow 101
-    // dmed 001
-    // dhi  001
-    boolean d1 = (read(1) < 10);
-    boolean d3 = (read(3) < 10);
-    boolean d5 = (read(5) < 10);
-    boolean d7 = (read(7) < 10);
-
-    if(d5)
+    
+    if(read(pinDialC) < 5)
     {
-      return dialCont;
+      dialState = dialCont;
     }
-    else if (d1)
+    else if (read(pinDialA) < 5)
     {
-      if (d7)
+      if (read(pinDialD) < 5)
       {
-        return dialLow;
+        dialState =  dialLow;
       }  
       else
       {
-        return dialEmission;
+        dialState = dialEmission;
       }
     } 
-    else if (d3)
+    else if (read(pinDialB) < 5)
     {
-      return dialMedium;
+      dialState = dialMedium;
     }
     else
     {
-      return dialHigh;
+      dialState = dialHigh;
     }
+
+    return dialState;
   }
   
   bool getDynamicIntensifier()
   {
-    return (read(0) < 10);
+    return (read(pinIntensifier) < 10);
   }
 
-  int getCutOff()
+  bool isIntensifierOn()
+  {    
+    if (getDynamicIntensifier());
+  }
+
+  byte getCutOff()
+  {
+    static int lastCutOff = 1023 - read(pinCutoff);
+    int cutOff = 1023 - read(pinCutoff);
+    int diff = lastCutOff - cutOff;
+
+    if ((diff > 16) || (diff < -16))
+      lastCutOff = cutOff;
+
+    return lastCutOff/4;
+
+  }  
+
+  int oldgetCutOff()
   {
     static unsigned long lastCheck = millis();
 
-    if (millis() > lastCheck + 1000)
-    {
-      lastCheck = millis();
-    } 
-    else
-    {
-      
-    }
-
-    cutOffState = (1023 - read(2));
+    cutOffState = (byte)((1023 - read(pinCutoff))/4);
     return cutOffState;
   }
 
   
   bool getLifeTest()
   {
-    return (read(6) > 0);
+    return (read(pinLifeTest) > 0);
   }
 
   bool getEmission()
   {
-    return (read(4) == 0);
+    return (read(pinEmission) == 0);
   }
   
-  void printPad(byte num)
+  void printPad(int num)
   {
+    if (num < 1000)
+      Serial.print("0");
     if (num < 100)
       Serial.print("0");
     if (num < 10)
@@ -122,25 +151,25 @@ class CMux
   {
 
     Serial.print(" E");
-      printPad(read(4));
+      printPad(read(pinEmission));
     Serial.print(" I");
-      printPad(read(0));
+      printPad(read(pinIntensifier));
     Serial.print(" L");
-      printPad(read(6));
+      printPad(read(pinLifeTest));
     Serial.print(" C");
-      printPad(read(2));
+      printPad(read(pinCutoff));
 
     Serial.print(" D");
       printPad(getDial());
 
     Serial.print("  ");
-      printPad(read(1));
+      printPad(read(pinDialA));
     Serial.print(" ");
-      printPad(read(3));
+      printPad(read(pinDialB));
     Serial.print("  ");
-      printPad(read(5));
+      printPad(read(pinDialC));
     Serial.print("  ");
-      printPad(read(7));
+      printPad(read(pinDialD));
     Serial.println();
   }
   

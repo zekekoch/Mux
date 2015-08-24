@@ -3,13 +3,15 @@ class CMux
   private:
 
     // this represents the pins on the mux going into the arduino
-    const byte pinA = 17;
-    const byte pinB = 18;
-    const byte pinC = 19;
-    const byte pinZ = 16; 
+    static const byte pinA = 17;
+    static const byte pinB = 18;
+    static const byte pinC = 19;
+    static const byte pinZ = 16; 
     
     byte dialState = 0;
     int cutOffState = 0;
+
+    typedef bool (*checkButtonState)();
   
   // this is the pins going to the buttons
   enum pins
@@ -38,7 +40,7 @@ class CMux
     dialLow,
     dialMedium,
     dialHigh
-  };
+  } Dial;
 
   CMux()
   {
@@ -92,35 +94,45 @@ class CMux
     return dialState;
   }
   
-  bool getDynamicIntensifier()
+  static bool getDynamicIntensifier()
   {
     return (read(pinIntensifier) < 10);
   }
 
-  bool isIntensifierOn()
-  {    
+  bool getButtonState(checkButtonState checkState)
+  {
     static bool currentState = false;
     static bool lastState = false;
+    static bool isOn = false;
 
     static unsigned long lastTime = millis();
     if (millis() < lastTime + 25)
     {
       //Serial.println("not long enough");
-      return lastState;
+      return isOn;
     } 
     else
     {
       lastTime = millis();      
     }
 
-    currentState = getDynamicIntensifier();
+    currentState = checkState();
 
 
     if (currentState == true && lastState == false)
     {
-      Serial.println("toggle");
+      if (isOn == true)
+        isOn = false;
+      else
+        isOn = true;
     }
     lastState = currentState;
+    return isOn;
+  }
+
+  bool isIntensifierOn()
+  {
+    return getButtonState(getDynamicIntensifier);
   }
 
   byte getCutOff()
@@ -135,79 +147,27 @@ class CMux
     return lastCutOff/4;
 
   }  
-
-  int oldgetCutOff()
-  {
-    static unsigned long lastCheck = millis();
-
-    cutOffState = (byte)((1023 - read(pinCutoff))/4);
-    return cutOffState;
-  }
-
   
-  bool getLifeTest()
+  static bool getLifeTest()
   {
-    return (read(pinLifeTest) > 0);
+    return (read(pinLifeTest) > 5);
   }
 
   bool isLifeTestOn()
-  {    
-    static bool currentState = false;
-    static bool lastState = false;
-
-    static unsigned long lastTime = millis();
-    if (millis() < lastTime + 25)
-    {
-      //Serial.println("not long enough");
-      return lastState;
-    } 
-    else
-    {
-      lastTime = millis();      
-    }
-
-    currentState = getLifeTest();
-
-
-    if (currentState == true && lastState == false)
-    {
-      Serial.println("toggle");
-    }
-    lastState = currentState;
+  {
+    return getButtonState(getLifeTest);
   }
 
 
-  bool getEmission()
+  static bool getEmission()
   {
     return (read(pinEmission) == 0);
   }
 
   bool isEmissionOn()
-  {    
-    static bool currentState = false;
-    static bool lastState = false;
-
-    static unsigned long lastTime = millis();
-    if (millis() < lastTime + 25)
-    {
-      //Serial.println("not long enough");
-      return lastState;
-    } 
-    else
-    {
-      lastTime = millis();      
-    }
-
-    currentState = getEmission();
-
-
-    if (currentState == true && lastState == false)
-    {
-      Serial.println("toggle");
-    }
-    lastState = currentState;
+  {
+    return getButtonState(getEmission);
   }
-
   
   void printPad(int num)
   {
@@ -246,7 +206,7 @@ class CMux
     Serial.println();
   }
   
-  int read(byte index)
+  static int read(byte index)
   {
     digitalWrite(pinC, bitRead(index,0)); 
     digitalWrite(pinB, bitRead(index,1)); 

@@ -27,10 +27,6 @@ class CMux
     pinDialD = 1
   } pins;
 
-  boolean emissionOn = false;
-  boolean intensifierOn = false;
-  boolean lifeTestOn = false;
-
   public:
 
   enum dialState
@@ -99,11 +95,9 @@ class CMux
     return (read(pinIntensifier) < 10);
   }
 
-  bool getButtonState(checkButtonState checkState)
+  bool getButtonState(checkButtonState checkState, bool &lastState, bool &isOn)
   {
-    static bool currentState = false;
-    static bool lastState = false;
-    static bool isOn = false;
+    bool currentState = false;
 
     static unsigned long lastTime = millis();
     if (millis() < lastTime + 25)
@@ -118,21 +112,23 @@ class CMux
 
     currentState = checkState();
 
-
     if (currentState == true && lastState == false)
     {
       if (isOn == true)
+      {
         isOn = false;
+      }
       else
+      {
         isOn = true;
+      }
+
+      Serial.print("toggle to ");
+      Serial.println(isOn);
     }
     lastState = currentState;
-    return isOn;
-  }
 
-  bool isIntensifierOn()
-  {
-    return getButtonState(getDynamicIntensifier);
+    return isOn;
   }
 
   byte getCutOff()
@@ -153,10 +149,6 @@ class CMux
     return (read(pinLifeTest) > 5);
   }
 
-  bool isLifeTestOn()
-  {
-    return getButtonState(getLifeTest);
-  }
 
 
   static bool getEmission()
@@ -164,9 +156,26 @@ class CMux
     return (read(pinEmission) == 0);
   }
 
+  bool isIntensifierOn()
+  {
+    static bool lastState = 0;
+    static bool isOn = 0;
+    return getButtonState(getDynamicIntensifier, lastState, isOn);
+  }
+
+
+  bool isLifeTestOn()
+  {
+    static bool lastState = 0;
+    static bool isOn = 0;
+    return getButtonState(getLifeTest, lastState, isOn);;
+  }
+
   bool isEmissionOn()
   {
-    return getButtonState(getEmission);
+    static bool lastState = 0;
+    static bool isOn = 0;
+    return getButtonState(getEmission, lastState, isOn);
   }
   
   void printPad(int num)

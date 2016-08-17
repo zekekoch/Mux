@@ -3,10 +3,11 @@ class CMux
   private:
 
     // this represents the pins on the mux going into the arduino
-    static const byte pinA = 17;
-    static const byte pinB = 18;
-    static const byte pinC = 19;
-    static const byte pinZ = 16; 
+    static const byte pinA = 16;
+    static const byte pinB = 17;
+    static const byte pinC = 18;
+    static const byte pinD = 19;
+    static const byte pinZ = A11; 
     
     byte dialState = 0;
     int cutOffState = 0;
@@ -16,15 +17,15 @@ class CMux
   // this is the pins going to the buttons
   enum pins
   {
-    pinEmission = 0,
-    pinLifeTest = 2,
-    pinIntensifier = 4,
-    pinCutoff = 6,
+    pinLifeTest = 0,
+    pinIntensifier = 1,
+    pinEmission = 2,
+    pinCutoff = 3,
 
-    pinDialA = 7,
+    pinDialA = 4,
     pinDialB = 5,
-    pinDialC = 3,
-    pinDialD = 1
+    pinDialC = 6,
+    pinDialD = 7
   } pins;
 
   public:
@@ -44,16 +45,17 @@ class CMux
     pinMode(pinA, OUTPUT);     
     pinMode(pinB, OUTPUT);     
     pinMode(pinC, OUTPUT); 
+    pinMode(pinD, OUTPUT); 
   }
   
   byte getDial()
   {
-    //            1  3  5  7
-    // cont-short 0  30 0  30
-    // emission   0  30 30 30
-    // dyn-lo     0  30 30 0
-    // dyn med    30 0  30 0 
-    // dyn-hi     30 30 30 30
+    //            A B C D
+    // cont-short 1 1 0 0
+    // emission   1 0 0 0
+    // dyn-lo     1 0 1 1
+    // dyn med    0 0 1 1 
+    // dyn-hi     0 0 1 1
 
     static unsigned long lastCheck = millis();
 
@@ -62,14 +64,15 @@ class CMux
       lastCheck = millis();
       return dialState;
     }
-    
-    if(read(pinDialC) < 5)
+
+
+    if(read(pinDialB) > 512)
     {
       dialState = dialCont;
     }
-    else if (read(pinDialA) < 5)
+    else if (read(pinDialA) > 512)
     {
-      if (read(pinDialD) < 5)
+      if (read(pinDialC) > 512)
       {
         dialState =  dialLow;
       }  
@@ -78,28 +81,18 @@ class CMux
         dialState = dialEmission;
       }
     } 
-    else if (read(pinDialB) < 5)
-    {
-      dialState = dialMedium;
-    }
+    // i can't distinguish between med and hi right now
     else
     {
-      dialState = dialHigh;
+      dialState = dialMedium;
     }
 
     return dialState;
   }
   
-  static bool getDynamicIntensifier()
+  // pass in the address of lastState and isOn so that I can store them in the calling function
+  bool getButtonState(bool currentState, bool &lastState, bool &isOn, unsigned long &lastTime)
   {
-    return (read(pinIntensifier) < 10);
-  }
-
-  bool getButtonState(checkButtonState checkState, bool &lastState, bool &isOn)
-  {
-    bool currentState = false;
-
-    static unsigned long lastTime = millis();
     if (millis() < lastTime + 25)
     {
       //Serial.println("not long enough");
@@ -109,8 +102,6 @@ class CMux
     {
       lastTime = millis();      
     }
-
-    currentState = checkState();
 
     if (currentState == true && lastState == false)
     {
@@ -122,61 +113,51 @@ class CMux
       {
         isOn = true;
       }
-
-      Serial.print("toggle to ");
-      Serial.println(isOn);
     }
     lastState = currentState;
 
     return isOn;
   }
 
+  bool isEmissionOn()
+  {
+    static bool lastState = 0;
+    static bool isOn = 0;    
+    static unsigned long lastTime = millis();
+
+    return getButtonState(read(pinEmission) > 512, lastState, isOn, lastTime);
+  }
+
+  // for some reason this doesn't work, but Emission does...
+  bool isIntensifierOn()
+  {
+    static bool lastState = 0;
+    static bool isOn = 0;  
+    static unsigned long lastTime = millis();
+
+    return getButtonState(read(pinIntensifier) > 512, lastState, isOn, lastTime);
+  }
+
+  bool isLifeTestOn()
+  {
+    static bool lastState = 0;
+    static bool isOn = 0;
+    static unsigned long lastTime = millis();
+
+    return getButtonState(read(pinLifeTest) < 512, lastState, isOn, lastTime);
+  }
+
   byte getCutOff()
   {
-    static int lastCutOff = 1023 - read(pinCutoff);
-    int cutOff = 1023 - read(pinCutoff);
+    static int lastCutOff = read(pinCutoff);
+    int cutOff = read(pinCutoff);
     int diff = lastCutOff - cutOff;
 
     if ((diff > 16) || (diff < -16))
       lastCutOff = cutOff;
 
     return lastCutOff/4;
-
   }  
-  
-  static bool getLifeTest()
-  {
-    return (read(pinLifeTest) > 5);
-  }
-
-
-
-  static bool getEmission()
-  {
-    return (read(pinEmission) == 0);
-  }
-
-  bool isIntensifierOn()
-  {
-    static bool lastState = 0;
-    static bool isOn = 0;
-    return getButtonState(getDynamicIntensifier, lastState, isOn);
-  }
-
-
-  bool isLifeTestOn()
-  {
-    static bool lastState = 0;
-    static bool isOn = 0;
-    return getButtonState(getLifeTest, lastState, isOn);;
-  }
-
-  bool isEmissionOn()
-  {
-    static bool lastState = 0;
-    static bool isOn = 0;
-    return getButtonState(getEmission, lastState, isOn);
-  }
   
   void printPad(int num)
   {
@@ -191,19 +172,45 @@ class CMux
   
   void print()
   {
+    for(int i = 0;i<16;i++)
+    {
+      Serial.print(i);
+      Serial.print(":");
+      printPad(read(i));
+      Serial.print(" ");
+    }
+    Serial.println();
+    prettyPrint();
+
+  }
+
+  void prettyPrint()
+  {
+
+    Serial.print(" I");
+    Serial.print(isIntensifierOn());
+    //Serial.print(" ");
+    //printPad(read(pinIntensifier));
 
     Serial.print(" E");
-      printPad(read(pinEmission));
-    Serial.print(" I");
-      printPad(read(pinIntensifier));
+    Serial.print(isEmissionOn());
+    //Serial.print(" ");
+    //printPad(read(pinEmission));
+
     Serial.print(" L");
-      printPad(read(pinLifeTest));
+    Serial.print(isLifeTestOn());
+    //Serial.print(" ");
+    //printPad(read(pinLifeTest));
+
     Serial.print(" C");
-      printPad(read(pinCutoff));
+    Serial.print(getCutOff());
+    Serial.print(" ");
+    printPad(read(pinCutoff));
 
     Serial.print(" D");
-      printPad(getDial());
+      Serial.print(getDial());
 
+/*
     Serial.print("  ");
       printPad(read(pinDialA));
     Serial.print(" ");
@@ -212,14 +219,16 @@ class CMux
       printPad(read(pinDialC));
     Serial.print("  ");
       printPad(read(pinDialD));
+*/
     Serial.println();
   }
   
   static int read(byte index)
   {
-    digitalWrite(pinC, bitRead(index,0)); 
+    digitalWrite(pinA, bitRead(index,0)); 
     digitalWrite(pinB, bitRead(index,1)); 
-    digitalWrite(pinA, bitRead(index,2)); 
+    digitalWrite(pinC, bitRead(index,2)); 
+    digitalWrite(pinD, bitRead(index,3)); 
 
     return analogRead(pinZ); 
   }

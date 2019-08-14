@@ -151,19 +151,28 @@ class CMux
       virtualButtonState[i] = 0;
   }
 
-  void setButtonState(byte button, bool state)
+  void printVBS()
   {
-      virtualButtonState[i] = state;
-  }
-
-  void getButtonState(byte button)
-  {
-    return ButtonOn(button);
+    Serial.println("VirtualButtonState");
+    for (int i = 0;i<16;i++)
+    {
+      Serial.print(virtualButtonState[i]);
+      if ((i+1)%4==0)
+        Serial.println();
+    } 
   }
 
   bool ButtonDown(byte button)
   {
-    return  getPinState(button) < 5 ? true : false;
+    //Serial.print("{");
+    //Serial.print(button);
+    //Serial.print("!");
+    //Serial.print(getPinState(button));
+    //Serial.print("}");
+    // when the button is down sometimes is hovers right above zero
+    // do I have a ground issue?
+    const byte wiggleDuration = 2;
+    return  getPinState(button) < wiggleDuration ? true : false;
   }
 
   // debounce 16 buttons
@@ -172,10 +181,12 @@ class CMux
   // I toggle the state of the virtual button.
   bool ButtonOn(byte button)
   {
-
+    //Serial.print("ButtonOn ");Serial.println(button);
     // if the physical button depressed or not
     static int isButtonDown[16] = {false};         // the current isButtonDown from the input pin
     static int wasButtonDown[16] = {false};    // the wasButtonDown isButtonDown from the input pin
+    static long time[16] = {0};         // the last time the output pin was toggled
+    const long debounce = 200;   // the debounce time, increase if the output flickers
 
     // todo: am I wasting too much time in here, it would be nice to return cached values if it hasn't 
     //       been very long, but the code below only allows the first button to have it's state
@@ -187,9 +198,6 @@ class CMux
     //  return virtualButtonState[button];
     //}
    
-    static long time[16] = {0};         // the last time the output pin was toggled
-    const long debounce = 200;   // the debounce time, increase if the output flickers
-
     isButtonDown[button] = ButtonDown(button);
     //Serial.print("b");Serial.print(button);Serial.print(" ");
     //Serial.print(isButtonDown[button]);Serial.print(" ");Serial.print(getPinState(button));Serial.println();
@@ -197,20 +205,27 @@ class CMux
     // if the input just went from LOW and HIGH and we've waited long enough
     // to ignore any noise on the circuit, toggle the output pin and remember
     // the time
-    if (isButtonDown[button] == true && wasButtonDown[button] == false && millis() - time[button] > debounce) {
+    if (isButtonDown[button] == true && wasButtonDown[button] == false && (millis() - time[button]) > debounce) {
       if (virtualButtonState[button] == true)
+      {
         virtualButtonState[button] = false;
+      }
       else
+      {
         virtualButtonState[button] = true;
+      }
 
       time[button] = millis();    
     }
 
     //lastButtonCheck = millis();
     wasButtonDown[button] = isButtonDown[button];
+
+    //Serial.print("ButtonDown return ");Serial.print(virtualButtonState[button]);Serial.println();
     return virtualButtonState[button];
   }
 
+  /*
   bool isEmissionOn()
   {
     static bool lastState = 0;
@@ -250,6 +265,7 @@ class CMux
 
     return lastCutOff/4;
   }  
+  */
   
   void printPad(int num)
   {
@@ -307,44 +323,35 @@ class CMux
   }
 
 
+/* 
+    void prettyPrint()
+    {
 
-  void prettyPrint()
-  {
+      Serial.print(" I");
+      Serial.print(isIntensifierOn());
+      //Serial.print(" ");
+      //printPad(getPinState(pinIntensifier));
 
-    Serial.print(" I");
-    Serial.print(isIntensifierOn());
-    //Serial.print(" ");
-    //printPad(getPinState(pinIntensifier));
+      Serial.print(" E");
+      Serial.print(isEmissionOn());
+      //Serial.print(" ");
+      //printPad(getPinState(pinEmission));
 
-    Serial.print(" E");
-    Serial.print(isEmissionOn());
-    //Serial.print(" ");
-    //printPad(getPinState(pinEmission));
+      Serial.print(" L");
+      Serial.print(isLifeTestOn());
+      //Serial.print(" ");
+      //printPad(getPinState(pinLifeTest));
 
-    Serial.print(" L");
-    Serial.print(isLifeTestOn());
-    //Serial.print(" ");
-    //printPad(getPinState(pinLifeTest));
+      Serial.print(" C");
+      Serial.print(getCutOff());
+      Serial.print(" ");
+      printPad(getPinState(pinCutoff));
 
-    Serial.print(" C");
-    Serial.print(getCutOff());
-    Serial.print(" ");
-    printPad(getPinState(pinCutoff));
-
-    Serial.print(" D");
+      Serial.print(" D");
       Serial.print(getDial());
+      Serial.println();
+    }
 
-/*
-    Serial.print("  ");
-      printPad(getPinState(pinDialA));
-    Serial.print(" ");
-      printPad(getPinState(pinDialB));
-    Serial.print("  ");
-      printPad(getPinState(pinDialC));
-    Serial.print("  ");
-      printPad(getPinState(pinDialD));
-*/
-    Serial.println();
-  }
+  */
   
 };

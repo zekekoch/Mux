@@ -142,23 +142,25 @@ class CButtons
     {
         // I only want to refresh the buttons every 200 milliseconds
         static unsigned long lastTime = millis();
-        if (millis() < lastTime + 200)
+        if (millis() < lastTime + 50)
         {
             return;
         }
         lastTime = millis();
+
+        mux.printBare();
 
         // loop over all of the buttons and check their 
         for (byte i = 0;i<16;i++)
         {
             byte led = ledOrder[i];
             bool isButtonOn = mux.ButtonOn(buttonOrder[i]);
-            Serial.print(mux.ButtonDown(buttonOrder[i]));
-            Serial.print(".");
-            Serial.print(mux.ButtonOn(buttonOrder[i]));
-            Serial.print(" ");
+            //Serial.print(mux.ButtonDown(buttonOrder[i]));
+            //Serial.print(".");
+            //Serial.print(mux.ButtonOn(buttonOrder[i]));
+            //Serial.print(" ");
 
-            printGroup(i);
+            //printGroup(i);
             if (isButtonOn)
             {
                 CRGB c = buttonDownColor[i];
@@ -174,7 +176,7 @@ class CButtons
                 buttonCache[i] = false;
             }
         }
-        Serial.println();
+        //Serial.println();
     }
 
     void setButtonColor(byte button, CRGB color)

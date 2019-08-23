@@ -107,10 +107,7 @@ class CButtons
 
     void clear()
     {
-        for (byte i = 0;i<16;i++)
-        {
-            setButtonColor(i, 0, 0, 0); 
-        }
+        mux.clear();
     }
 
     void chaseColorButtons()
@@ -123,7 +120,7 @@ class CButtons
             else
                 setButtonColor(led, full, 0, 0); 
             
-            FastLED.delay(1000);  
+            FastLED.delay(100);  
         }
     }
 
@@ -148,24 +145,41 @@ class CButtons
         }
         lastTime = millis();
 
-        mux.printBare();
+        //mux.printBare();
 
         // loop over all of the buttons and check their 
         for (byte i = 0;i<16;i++)
         {
             byte led = ledOrder[i];
-            bool isButtonOn = mux.ButtonOn(buttonOrder[i]);
+            byte buttonIndex = buttonOrder[i];
+            bool isButtonOn = mux.ButtonOn(buttonIndex);
             //Serial.print(mux.ButtonDown(buttonOrder[i]));
             //Serial.print(".");
             //Serial.print(mux.ButtonOn(buttonOrder[i]));
             //Serial.print(" ");
 
             //printGroup(i);
+
             if (isButtonOn)
             {
+            switch(i)
+            {
+                case 3:
+                case 7:
+                case 11:
+                case 15:
+                    break;
+                default:
+                    clear();
+                    mux.setButtonState(buttonOrder[i], false);
+                    break;
+            }
+
+
                 CRGB c = buttonDownColor[i];
                 //Serial.print("setButtonDownColor ");Serial.print(i);Serial.print(".");Serial.print(led);Serial.print(" ");Serial.print(c.r);Serial.println();
-                setButtonColor(led, c); 
+                setButtonColor(led, c);
+                mux.setButtonState(buttonOrder[i], true);  
                 buttonCache[i] = true;
             }
             else

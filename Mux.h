@@ -180,6 +180,10 @@ class CMux
     return  getPinState(button) == 1023 ? true : false;
   }
 
+  void setButtonState(byte button, bool state)
+  {
+    virtualButtonState[button] = state;
+  }
 
   // debounce 16 buttons
   //
@@ -219,7 +223,7 @@ class CMux
       else
       {
         virtualButtonState[button] = true;
-        Serial.print("enable ");Serial.print(button);
+        //Serial.print("enable ");Serial.print(button);
       }
 
       time[button] = millis();    

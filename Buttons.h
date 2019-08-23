@@ -162,18 +162,8 @@ class CButtons
 
             if (isButtonOn)
             {
-            switch(i)
-            {
-                case 3:
-                case 7:
-                case 11:
-                case 15:
-                    break;
-                default:
-                    clear();
-                    mux.setButtonState(buttonOrder[i], false);
-                    break;
-            }
+                clear();
+                mux.setButtonState(buttonOrder[i], false);
 
 
                 CRGB c = buttonDownColor[i];
